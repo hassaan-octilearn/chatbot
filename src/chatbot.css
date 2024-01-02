@@ -1,0 +1,12 @@
+.chatbot{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.Messages{
+    height: 300px;
+    border: 3px solid black;
+    width: 300px;
+    display: flex;
+    justify-content:center ;
+}
