@@ -8,28 +8,73 @@ const openai = new OpenAI({
   dangerouslyAllowBrowser: true,
 });
 
+
+
+
+// "UnderStanding Concepts",
+// "Revising Concepts",
+// "Addressing Information",
+// "Practising Question"
+
+const defaultData = {
+  body: {
+    data: [
+      {
+        id: 1,
+        role: "assistant", // or "user"
+        content: [
+          {
+            text: {
+              value: "Please let me know what you need in this session:",
+            },
+          },
+        ],
+        content1: [
+
+          "UnderStanding Concepts",
+          "Revising Concepts",
+          "Addressing Information",
+          "Practising Question"
+        ]
+
+      },
+      // More message objects...
+    ],
+  },
+};
+
+
 function MainComponent(props) {
   const [inputValue, setInputValue] = useState("");
-  const [responseData, setResponseData] = useState({});
+  const [responseData, setResponseData] = useState(defaultData);
   const [thread, setThread] = useState("");
-  const [neverStarted, setNeverStarted] = useState(false);
   const userId = props.name;
   const [waitingMessage, setWaitingMessage] = useState(false);
-  const [reponseError,setResponseError]=useState();
+  const [reponseError, setResponseError] = useState();
+  const [notStarted, setNotStarted] = useState(true);
+
+  const messagesEndRef = useRef(null);
+
+  // Scroll to the bottom whenever responseData changes
+
+
+  const scrollToBottom = () => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
 
 
   useEffect(() => {
     const userThread = thread_data.find((user) => user.name === `student_${userId}`);
     if (userThread) {
-      console.log("old thread");
-      console.log(userThread.thread_id);
       setThread(userThread.thread_id);
-      setNeverStarted(true);
-
-
+      console.log("Oold thread")
     }
-    else {
+    else if(!userThread) {
       console.log("new thread");
+      createThreadAndStartChat();
     }
 
 
@@ -43,22 +88,25 @@ function MainComponent(props) {
         }
       }
     };
-
+    scrollToBottom();
     fetchPreviousMessages();
-  }, [userId, responseData, thread])
-
-
-
+  }, [responseData, notStarted])
   const createThreadAndStartChat = async () => {
     console.log("create thread and start chat")
     const thread = await openai.beta.threads.create();
-    const new_data = { name: `student_${userId}`, thread_id: thread.id }
-    thread_data.push(new_data);
-    console.log(thread_data);
-    setNeverStarted(true);
+    console.log(thread.id);
     setThread(thread.id);
 
   }
+
+  const createDefaultMessage = async (messageValue) => {
+    const message = await openai.beta.threads.messages.create(thread, {
+      role: "user",
+      content: messageValue,
+    });
+
+
+  };
 
   const createMessage = async () => {
     const message = await openai.beta.threads.messages.create(thread, {
@@ -69,11 +117,12 @@ function MainComponent(props) {
 
   };
 
+
+
   const runAssistant = async () => {
     const run = await openai.beta.threads.runs.create(thread, {
       assistant_id: "asst_Gc3PArxAu0rO10aUC7cNAdTl",
     });
-
     checkRunStatus(run.id);
   };
 
@@ -90,9 +139,9 @@ function MainComponent(props) {
       else if (run.status === "failed") {
         setWaitingMessage(false);
         setResponseError(run.last_error);
-     
+
       }
-      else if(run.status==="completed") {
+      else if (run.status === "completed") {
         setWaitingMessage(false);
         setResponseError();
 
@@ -102,15 +151,26 @@ function MainComponent(props) {
     }
   };
 
-  // const assistantResponse = async () => {
-  //   const messages = await openai.beta.threads.messages.list(thread);
+  // const assistantResponse = async () => {0000
   //   console.log(messages.body.data[1]);
   //   setResponseData(messages);
   // };
-  const sendMessages = async () => {
-    setInputValue("");
+
+  const defaultMessageSend = (button) => {
+
+    console.log(button);
+    createDefaultMessage(button);
+    runAssistant();
+    setNotStarted(false);
+
+
+
+
+  }
+  const sendMessages = () => {
     createMessage();
     runAssistant();
+    setInputValue("");
 
   };
 
@@ -124,36 +184,44 @@ function MainComponent(props) {
   };
 
   return (
-    <div className="chatbot" style={{display:"flex",position:"absolute",right:0,bottom:0}}>
+    <div className="chatbot" style={{}}>
       <div>
-        {neverStarted ?
-          <div style={{ height: "400px", width: "300px", border: "1px solid black", overflow: "auto",display:"flex",flexDirection:"column",justifyContent:"end" }}>
-
-            {responseData &&
+        {notStarted ?
+          (<div style={{ height: "400px", width: "300px", border: "1px solid black", overflow: "auto"}}>
+            {
               responseData.body &&
               responseData.body.data.slice().reverse().map((message) => (
-                <div key={message.id} style={{ display: "flex", justifyContent: message.role === "assistant" ? "flex-start" : "flex-end" }}>
+                <div key={message.id} style={{ display: "flex", flexDirection: "column", justifyContent: message.role === "assistant" ? "flex-start" : "flex-end" }}>
                   <p style={{ padding: "5px 10px", borderRadius: "10px", backgroundColor: message.role === "assistant" ? "blue" : "green", color: "white", maxWidth: "70%" }}>
                     {message.content[0].text.value}
                   </p>
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    {message.content1 && message.content1.map((value, index) => (
+                      <button key={index} onClick={() => defaultMessageSend(value)}>{value}</button>
+                    ))}
+                  </div>
                 </div>
-              ))  
+              ))
+            }
+          </div>) : (
+            
+            <div style={{ height: "400px", width: "300px", border: "1px solid black", overflow: "auto" }}>
+              {responseData &&
+                responseData.body &&
+                responseData.body.data.slice().reverse().map((message) => (
+                  <div key={message.id} style={{ display: "flex", justifyContent: message.role === "assistant" ? "flex-start" : "flex-end" }}>
+                    <p style={{ padding: "5px 10px", borderRadius: "10px", backgroundColor: message.role === "assistant" ? "blue" : "green", color: "white", maxWidth: "70%" }}>
+                      {message.content[0].text.value}
+                    </p>
+                  </div>
+                ))
               }
-              {waitingMessage?
-                <div>
-                            <p>Waiting for response...</p>
-                </div>:
-                <div>
-                  {JSON.stringify(reponseError)}
-                </div>
-                }
-          </div> :
-          <div style={{ height: "400px", width: "300px", border: "1px solid black", overflow: "auto" }}>
 
-            <p>chat is never started</p>
-            <button onClick={createThreadAndStartChat}>start chat!</button>
-          </div>
-        }
+            </div>
+     
+         
+          )}
+
         <form onSubmit={handleSubmit}>
           <input
             placeholder={"Welcome " + props.name + "!"}
