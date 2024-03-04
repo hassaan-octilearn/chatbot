@@ -6,6 +6,7 @@ import thread_data from "./threads_data";
 const openai = new OpenAI({
 
   dangerouslyAllowBrowser: true,
+  apiKey:process.env.REACT_APP_API_KEY,
 });
 
 
@@ -121,7 +122,7 @@ function MainComponent(props) {
 
   const runAssistant = async () => {
     const run = await openai.beta.threads.runs.create(thread, {
-      assistant_id: "asst_Gc3PArxAu0rO10aUC7cNAdTl",
+      assistant_id: "asst_E0ji1SVhp7vcVDONZkhdES9P",
     });
     checkRunStatus(run.id);
   };
@@ -211,7 +212,8 @@ function MainComponent(props) {
                 responseData.body.data.slice().reverse().map((message) => (
                   <div key={message.id} style={{ display: "flex", justifyContent: message.role === "assistant" ? "flex-start" : "flex-end" }}>
                     <p style={{ padding: "5px 10px", borderRadius: "10px", backgroundColor: message.role === "assistant" ? "blue" : "green", color: "white", maxWidth: "70%" }}>
-                      {message.content[0].text.value}
+                    {message.content[0] && message.content[0].text && message.content[0].text.value}
+
                     </p>
                   </div>
                 ))
